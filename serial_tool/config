@@ -1,0 +1,13 @@
+use mysql = 1
+mysql address = 127.0.0.1
+mysql database = serial_tool
+mysql login = root
+model = rel_t,a0,a1,a2,a3,a4,a5
+mysql password = pinetree
+mysql table = pins
+use log = 1
+log directory = ./
+server port = 8888
+serial path = ./my_pipe
+serial speed = -1
+done

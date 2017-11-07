@@ -1,0 +1,9 @@
+#!/bin/bash
+i=0
+while true; do 
+  #echo "{t:"`date +%s`", data:{a0:"$RANDOM",a1:"$RANDOM",a2:"$RANDOM",a3:"$RANDOM",a4:"$RANDOM",a5:"$RANDOM"}}" > ~/Desktop/my_pipe;
+  #echo "{rel_t:$i,a0:"$RANDOM",a1:"$RANDOM",a2:"$RANDOM",a3:"$RANDOM",a4:"$RANDOM",a5:"$RANDOM"}" > ~/Desktop/my_pipe;
+  echo $i,"$RANDOM","$RANDOM","$RANDOM","$RANDOM","$RANDOM","$RANDOM" > ./my_pipe;
+  sleep 0.00001;
+  i=$((i+1))
+done
