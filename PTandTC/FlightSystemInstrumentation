@@ -1,0 +1,217 @@
+//Prints in following order, commas in between, no spaces. Prints using format: item(unit)(data type)
+
+//relative time (ms)(unsigned long)
+//CC PT(psi)(double)
+//TC1(C)(int)
+//TC2(C)(int)
+//x-Acceleration(uncalibrated)(int)
+//y-Acceleration(uncalibrated)(int)
+//z-Acceleration(uncalibrated)(int)
+//yaw(uncalibrated)(int)
+//pitch(uncalibrated)(int)
+//roll(uncalibrated)(int)
+//IMU Temperature(C)(float)
+//IMU Pressure(psi)(float)
+//Altitude(ft)(float)
+
+//Links to webpages used:
+//TC Amplifier:https://learn.adafruit.com/adafruit-max31856-thermocouple-amplifier/overview
+//IMU:https://www.dfrobot.com/wiki/index.php/10_DOF_Mems_IMU_Sensor_V2.0_SKU:_SEN0140
+
+#include <Adafruit_MAX31856.h> //https://github.com/adafruit/Adafruit_MAX31856
+#include <Wire.h>
+#include "DFRobot_BMP280.h" //https://github.com/DFRobot/DFRobot_BMP280
+#include <SoftwareSerial.h>
+#include "FreeSixIMU.h" //https://github.com/DFRobot/FreeSixIMU
+
+DFRobot_BMP280 bmp280;
+FreeSixIMU accelAndGyro = FreeSixIMU();
+SoftwareSerial portToMyRIO(3, 2); //portName(RXpin, TXpin)
+
+void printComma();
+
+float altitude;
+float IMUTemperature;
+float IMUPressure;
+int TCArray[2];
+int TCCount = 2; //CHANGE TCCount TO EQUAL NUMBER OF THERMOCOUPLES (3 for FSM, 7 for GSM)
+int csPinCount[] = {5, 6};
+int SDI = 7;
+int SDO = 8;
+int SCLK = 9;
+float altitudeScale = 3.19;
+float altitudeOffset = 62.7;
+int rawValues[6]; //rawValues 0, 1, 2 are x, y, z acceleration. 3, 4, 5 are gyro values yaw, pitch, and roll 
+
+// This array has the pins whose voltages will be measured
+
+/*int tenkPin = A0;
+int ptPin2 = A1;
+int ptPin3 = A2;*/
+int ptPin4 = A3;
+
+/*double tenkVal =0;
+double pt2Val = 0;
+double pt3Val = 0;*/
+double pt4Val = 0;
+
+/*double resistorVal = 250;
+double current = 0;
+double voltage = 0;
+//scale values
+double tenkScale = 628.14;
+double pt2Scale = 2;
+double pt3Scale = 1;*/
+double pt4Scale = 1;
+//offset values
+/*double tenkOffset = -2510.5;
+double pt2Offset = 0;
+double pt3Offset = 0;*/
+double pt4Offset = 0;
+//pressure Values
+/*double tenkPressure = 0;
+double pt2Pressure = 0;
+double pt3Pressure = 0;*/
+double pt4Pressure = 0;
+
+int currentPin = 0;
+
+// Use software SPI: (CS, DI, DO, CLK)
+// use hardware SPI, just pass in the CS pin
+//Adafruit_MAX31856 max = Adafruit_MAX31856(10);
+
+void setup() {
+  Serial.begin(9600);
+  while(!Serial)
+  {
+  } 
+
+//Begins software serial communication with D2(TX) and D3(RX)
+  portToMyRIO.begin(9600);
+
+//Begins IMU accelerometer and gyro;
+  accelAndGyro.init();
+  
+//Sets up thermocouples connected to pins 7,8,9
+  for (int i = 0; i < TCCount; i++){
+    Adafruit_MAX31856 max = Adafruit_MAX31856(csPinCount[i], SDI, SDO, SCLK);
+  Serial.begin(9600);
+
+  max.begin();
+
+//Set thermocouple type to type J
+  max.setThermocoupleType(MAX31856_TCTYPE_J);
+  max.Config();
+  }
+
+//Checks if the IMU is detected
+  if (!bmp280.begin()) {  
+    Serial.println("Could not find a valid BMP280 sensor!");
+    while (1);
+  }
+}
+
+void loop() {
+//Read PT Values
+  /*pt2Val = analogRead(ptPin2);
+  pt3Val = analogRead(ptPin3);*/
+  pt4Val = analogRead(ptPin4);
+  //sense current
+  /*tenkVal = analogRead(tenkPin);
+  voltage = tenkVal/1024*5;
+  current = voltage/resistorVal*1000;*/
+
+  /*tenkPressure = current*tenkScale + tenkOffset;
+  pt2Pressure = pt2Val*pt2Scale + pt2Offset;
+  pt3Pressure = pt3Val*pt3Scale + pt3Offset;*/
+  pt4Pressure = pt4Val*pt4Scale + pt4Offset;
+
+//Read TC Values  
+  for (int i = 0; i < TCCount; i++){
+    Adafruit_MAX31856 max = Adafruit_MAX31856(csPinCount[i], SDI, SDO, SCLK);
+
+//define variable TCT as an int (length of 2 bytes) and sets equal to temperature reading from Thermocouple
+    int TCT = max.readThermocoupleTemperature();
+
+    ::TCArray[i] = TCT;
+
+//Check and print any faults
+    /*uint8_t fault = max.readFault();
+    if (fault) {
+      if (fault & MAX31856_FAULT_CJRANGE) Serial.print("Cold Junction Range Fault");
+      if (fault & MAX31856_FAULT_TCRANGE) Serial.print("Thermocouple Range Fault");
+      if (fault & MAX31856_FAULT_CJHIGH)  Serial.print("Cold Junction High Fault");
+      if (fault & MAX31856_FAULT_CJLOW)   Serial.print("Cold Junction Low Fault");
+      if (fault & MAX31856_FAULT_TCHIGH)  Serial.print("Thermocouple High Fault");
+      if (fault & MAX31856_FAULT_TCLOW)   Serial.print("Thermocouple Low Fault");
+      if (fault & MAX31856_FAULT_OVUV)    Serial.print("Over/Under Voltage Fault");
+      if (fault & MAX31856_FAULT_OPEN)    Serial.println("Thermocouple Open Fault");
+      }*/
+  }
+//Calculates IMU Temperature in Celsius and assigns that value to variable IMUTemperature
+  IMUTemperature = bmp280.readTemperatureValue();
+
+//Calculates IMU Pressure in PSI
+  IMUPressure = bmp280.readPressureValue()/6894.76;
+
+//Calculates altitude and assigns that value to variable altitude
+  altitude = bmp280.readAltitudeValue(1018.20) * altitudeScale + altitudeOffset;
+
+//Calculates acceleration in x, y, and z directions, and gyro: yaw, pitch, roll
+  accelAndGyro.getRawValues(rawValues);
+
+//Prints relative time(ms)
+  Serial.print(millis());
+  portToMyRIO.print(millis());
+  printComma();
+
+//Prints PT Values(PSI)
+  /*Serial.print(tenkPressure);
+  portToMyRIO.print(tenkPressure);
+  printComma();
+  Serial.print(pt2Pressure);
+  portToMyRIO.print(pt2Pressure);
+  printComma();
+  Serial.print(pt3Pressure);
+  portToMyRIO.print(pt3Pressure);
+  printComma();*/
+  Serial.print(pt4Pressure);
+  portToMyRIO.print(pt4Pressure);
+  printComma();
+
+//Prints TC Values(C)
+  for (int i = 0; i < TCCount; i++)
+  { 
+    Serial.print(::TCArray[i]);
+    portToMyRIO.print(::TCArray[i]);
+    printComma();
+  }
+
+//Prints x, y, z acceleration, then yaw pitch roll UNCALIBRATED
+  for (int k = 0; k < 6; k++)
+  {
+    Serial.print(rawValues[k]);
+    portToMyRIO.print(rawValues[k]);
+    printComma();
+  }
+
+//Prints IMU Temperature (C)
+  Serial.print(IMUTemperature);
+  portToMyRIO.print(IMUTemperature);
+  printComma();
+
+//Prints IMU Pressure(Pa)
+  Serial.print(IMUPressure);
+  portToMyRIO.print(IMUPressure);
+  printComma();
+
+//Prints IMU Altitude(ft) (kinda finicky)
+  Serial.println(altitude);
+  portToMyRIO.println(altitude);
+}
+
+void printComma()
+{
+  Serial.print(",");
+  portToMyRIO.print(",");
+}
